@@ -1,9 +1,9 @@
 /*
  * Topoblock
  * 
- * By Curtis Jones, , , 
+ * By Curtis Jones, Jon Ayuco, Nikhil Chaba, Andrew Bastien
  * 
- * The purpose of this program is to simulate an algorithm that would transfer the topographic data from
+ * The purpose of this Class is to simulate an algorithm that would transfer the topographic data from
  * a geoTIFF file into the videogame Minecraft. We achieve this by using JME3, a graphical engine made 
  * for Java, to simulate the blocky landscape of Minecraft. 
  * 
@@ -26,8 +26,7 @@ import java.io.IOException;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.gce.geotiff.GeoTiffReader;
 
-/* Main Class
- * 
+/* 
  * Functions:
  * 
  *  render(File file): 
@@ -39,14 +38,9 @@ import org.geotools.gce.geotiff.GeoTiffReader;
  *  scalar(float value):
  *      Scales the height of the resultant topographic data to conform with minecraft's
  *      height restrictions
- *  
- * 
  */
-public class Topoblock {
 
-    // Constructor
-    Topoblock() {
-    }
+public class Topoblock {
 
     // stores the height and width of image
     private static int IMAGE_WIDTH;
@@ -82,7 +76,7 @@ public class Topoblock {
             DATA = ((DataBufferFloat) raster.getDataBuffer()).getData();
 
             // initializes space object and starts graphical engine.
-            // *Maintains an equal number of pixels across both dimensionswhen rendering
+            // *Maintains an equal number of pixels across both dimensions when rendering
             // blocks due to constrictions of Space*
             Space space = new Space(raster, Math.min(IMAGE_WIDTH, IMAGE_HEIGHT));
             space.start();

@@ -1,3 +1,20 @@
+/*
+ * Space
+ * 
+ * By Curtis Jones, Jon Ayuco, Nikhil Chaba, Andrew Bastien
+ * 
+ * The purpose of this Class is to simulate an algorithm that would transfer the topographic data from
+ * a geoTIFF file into the videogame Minecraft. This class builds the enviornment and blocks using the JmonkeyEngine.
+ * 
+ * Dependencies:
+ *  GeoTools:
+ *      Process geoTIFF files by extracting the raster layers from the images. These layers contain topographic 
+ *      height data 
+ *  JMonkeyEngine: 
+ *      A graphical game engine that can simulate how this functionality would work in minecraft.
+
+ */
+
 package org.geotools.tutorial.topoblock;
 
 import java.awt.image.Raster;
@@ -8,141 +25,124 @@ import com.jme3.app.SimpleApplication;
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
-import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.texture.Texture;
 import com.jme3.texture.Texture.MagFilter;
 import com.jme3.texture.Texture.MinFilter;
 
+/* 
+ * Functions:
+ * 
+ *  simpleInitApp()): 
+ *      initializes the environment
+ *      initializes camera and camera properties
+ *  createWorld()
+ *      creates environment
+ *      sets properties for geometry used to represent minecraft blocks
+ *      iterates through raster coordinates to find heights for each block
+ *      spawns each individual block
+ */
+
 public class Space extends SimpleApplication {
 
+    // gets rastar and grid size from Topoblock
     private int gridSize;
     private Raster raster;
     private ExecutorService executorService; // Thread pool for multitasking
 
-    Node blocks;
-
+    // constructor
     Space(Raster raster, int gridSize) {
         this.raster = raster;
         this.gridSize = gridSize;
     }
 
+    // sets size of individual blocks to 1 to keep uniformity
     private int blockSize = 1;
 
-    /*
-     * public static void main(String[] args) { Space app = new Space(gridSize);
-     * app.start(); }
-     */
-
+    // function to initialize world and camera
     @Override
     public void simpleInitApp() {
-        // Set up the camera to be a floating camera
-        viewPort.setClearFlags(true, true, true); // Clear depth, color, and alpha buffers
-        flyCam.setMoveSpeed(100); // Adjust camera speed
-        flyCam.setRotationSpeed(2); // Adjust camera rotation speed
+        // sets up camera
+        viewPort.setClearFlags(true, true, true);
+        flyCam.setMoveSpeed(100);
+        flyCam.setRotationSpeed(2);
         viewPort.setBackgroundColor(ColorRGBA.Cyan);
-        // Create the world grid of blocks with variable heights
 
-        // Initialize thread pool
+        // initialize thread pool
         executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
+        // initialize world
         createWorld();
     }
 
+    /*
+     * function to: set properties for each block iterate through the raster grid,
+     * coordinates and extract height data use height and coordinate data to spawn
+     * blocks
+     */
     private void createWorld() {
-        Topoblock topo = new Topoblock();
         AssetManager assetManager = getAssetManager();
         Node rootNode = getRootNode();
 
-        // Create materials upfront and reuse them
+        // creates texture to use for all blocks
         Texture texture = assetManager.loadTexture("textures/coblestone.png");
         texture.setMinFilter(MinFilter.BilinearNoMipMaps); // Disable mipmaps
         texture.setMagFilter(MagFilter.Bilinear); // Use Bilinear for magnification
 
+        // sets material and texture for all blocks
         Material blockMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         blockMaterial.setTexture("ColorMap", texture);
         blockMaterial.getAdditionalRenderState().setDepthTest(true);
         blockMaterial.getAdditionalRenderState().setDepthWrite(true);
 
-        int count = 0;
+        // double value to display loading progress
+        double loadingPercentage = 0;
 
-        // Create a task for each block generation
-        for (int x = 0; x < gridSize; x++) {
-            for (int y = 0; y < gridSize; y++) {
+        // nested for loop do traverse over (x, y) coordinates in raster
+        for (int x = 0; x < (gridSize); x++) {
+            for (int y = 0; y < (gridSize); y++) {
 
-                System.out.println("Loaded block " + (count) + "/" + (gridSize * gridSize));
+                // displays what percentage of the map is loaded every 100000 blocks
+                if (loadingPercentage % 1000000 == 0)
+                    System.out.println("Loaded block " + (loadingPercentage / (gridSize * gridSize) * 100) + "%");
 
-                final int xCoord = x;
-                final int yCoord = y;
+                // creates final ints for certain calls
+                final int X = x;
+                final int Y = y;
 
-                // Submit the block generation task to the executor
+                /*
+                 * the following is an implementation of multithreading to quickly load the
+                 * environment
+                 */
+
+                // submits the generation task to the executor
                 executorService.submit(() -> {
-                    int height = topo.getElevation(raster, xCoord, yCoord);
 
-                    // Create the block geometry
-                    Box box = new Box(blockSize, height / 2, blockSize);
-                    Geometry block = new Geometry("Block_" + xCoord + "_" + yCoord, box);
+                    // extracts height from the given (x, y) coordinate
+                    int height = Topoblock.getElevation(raster, X, Y);
+
+                    // creates the block geometry
+                    Box box = new Box(blockSize, blockSize, blockSize);
+                    Geometry block = new Geometry("Block_" + X + "_" + Y, box);
                     block.setMaterial(blockMaterial);
-                    block.setLocalTranslation(xCoord * blockSize, height / 2, yCoord * blockSize);
 
-                    // Schedule this block to be added to the scene graph on the main thread
+                    // sets block location
+                    block.setLocalTranslation(X * blockSize, height / 2, Y * blockSize);
+
+                    // queues this block to be added to the environment on the main thread
                     enqueue(() -> {
                         rootNode.attachChild(block);
                     });
                 });
-                count++;
+                loadingPercentage++;
             }
         }
-
-        /*
-         * for (int x = 0; x < (gridSize / 65); x++) { for (int y = 0; y < (gridSize /
-         * 65); y++) {
-         * 
-         * System.out.println("Loaded block " + (count) + "/" + ((gridSize * gridSize) /
-         * 130));
-         * 
-         * int height = topo.getElevation(raster, x, y);
-         * 
-         * // Create a node to hold all blocks for batch processing blocks = new
-         * Node("Blocks");
-         * 
-         * Box box = new Box(blockSize, height / 2, blockSize); Geometry block = new
-         * Geometry("Block_" + x + "_" + y, box); // Geometry block2 = new
-         * Geometry("Block_" + (x + 0.01) + "_" + (y + 0.01), // box);
-         * 
-         * block.setMaterial(blockMaterial); // block2.setMaterial(wireframeMaterial);
-         * 
-         * // Set the position of the block in the world block.setLocalTranslation(x *
-         * blockSize, height / 2, y * blockSize); // block2.setLocalTranslation(x *
-         * blockSize, height / 2, y * blockSize);
-         * 
-         * // Attach the block to the root node rootNode.attachChild(block); // Attach
-         * the block2 to the root node // rootNode.attachChild(block2);
-         * 
-         * count += 1; } }
-         */
     }
 
+    // sets logic (currently unutilized)
     @Override
     public void simpleUpdate(float tpf) {
-        // Example of level of detail logic: skip rendering for blocks far from the
-        // camera
-        Vector3f cameraPosition = cam.getLocation();
-
-        for (Spatial block : rootNode.getChildren()) {
-            Vector3f blockPosition = block.getLocalTranslation();
-            float distance = cameraPosition.distance(blockPosition);
-
-            // Example: Don't render blocks farther than a certain distance
-            if (distance > 100f) {
-                block.setCullHint(Spatial.CullHint.Always); // Disable rendering
-            } else {
-                block.setCullHint(Spatial.CullHint.Never); // Enable rendering
-            }
-        }
     }
-
 }
